@@ -1,0 +1,49 @@
+#+TITLE: Abacus: my arbitrary precision arithmetic library
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+DATE: <2020-01-18 Sat>
+#+AUTHOR: Bao Hexing
+#+EMAIL: HexingB@qq.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 26.3 (Org mode 9.1.9)
+
+* Introduction
+
+Abacus is a header only library for arbitrary precision big number arithmetic computing. It is a toy project created with following objectives in my mind:
+
+1. to practice my C++ programming skills
+2. to learn mathematics, especially for encryption study I hope
+
+As it is just for educational purpose, the implementation is unrestrained. Anyway, a bc compatible executive will be created as an application and benchmark test.
+
+* Installation
+
+#+BEGIN_SRC shell
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/Your/Installation/Path/ ..
+make
+make install
+#+END_SRC
+
+* Progress
+
+** DONE read integer digits and store them in base $2^{32}$
+CLOSED: [2020-02-05 三 18:33]
+
+** DONE display number in any base(0 ~ $2^{32}$)
+CLOSED: [2020-02-05 三 18:36]
+
+** DONE rewrite the implementation
+CLOSED: [2020-03-11 Wed 14:11]
+
+** DONE read and write decimal number
+CLOSED: [2020-03-11 Wed 14:11]
+
+** TODO basic arithmetic (add/sub/mul/div/mod)
+

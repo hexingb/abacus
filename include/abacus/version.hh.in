@@ -1,0 +1,23 @@
+#ifndef ABACUS_VERSION_HH_
+#define ABACUS_VERSION_HH_
+
+#include <abacus/abacus.hh>
+#include <sstream>
+#include <string>
+
+namespace abacus {
+#define ABACUS_VERSION_MAJOR @ABACUS_VERSION_MAJOR@
+#define ABACUS_VERSION_MINOR @ABACUS_VERSION_MINOR@
+#define ABACUS_VERSION_PATCH @ABACUS_VERSION_PATCH@
+
+const std::string version() {
+  std::ostringstream oss;
+  oss << ABACUS_VERSION_MAJOR << "." << ABACUS_VERSION_MINOR << "."
+      << ABACUS_VERSION_PATCH << std::endl;
+  oss << "internal base: " << ABACUS_BYTE_MAX;
+  return oss.str();
+}
+
+}  // namespace abacus
+
+#endif
