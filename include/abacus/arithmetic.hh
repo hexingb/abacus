@@ -57,10 +57,13 @@ bool operator==(const Number &lhs, const Number &rhs) {
          (*lhs.digits_) == (*rhs.digits_);
 }
 
-bool operator<=(const Number &lhs, const Number &rhs) { return true; }
-bool operator>(const Number &lhs, const Number &rhs) { return true; }
-bool operator>=(const Number &lhs, const Number &rhs) { return true; }
-bool operator!=(const Number &lhs, const Number &rhs) { return true; }
+bool operator<=(const Number &lhs, const Number &rhs) {
+  return lhs < rhs || lhs == rhs;
+}
+
+bool operator>(const Number &lhs, const Number &rhs) { return !(lhs <= rhs); }
+bool operator>=(const Number &lhs, const Number &rhs) { return !(lhs < rhs); }
+bool operator!=(const Number &lhs, const Number &rhs) { return !(lhs == rhs); }
 
 const Number operator+(const Number &lhs, const Number &rhs) {
   Number result;
