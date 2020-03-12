@@ -77,6 +77,9 @@ Byte sum_one_digit_with_carry(Word a, Word b, Word &carry) {
 }
 
 const Number operator+(const Number &lhs, const Number &rhs) {
+  debug_num(lhs);
+  debug_num(rhs);
+
   if (lhs.negative_ == true && rhs.negative_ == false) {
     return rhs - abs(lhs);
   }
@@ -104,24 +107,28 @@ const Number operator+(const Number &lhs, const Number &rhs) {
         rhs.digits_->rbegin(),
         rhs.digits_->rbegin() + rhs_decimal_magnitude - lhs_decimal_magnitude,
         std::back_inserter(decimal_sum));
-    rhs_decimal_magnitude -= lhs_decimal_magnitude;
-    lhs_decimal_magnitude = 0;
+    rhs_decimal_magnitude = rhs.point_pos_ + lhs_decimal_magnitude - 1;
+    lhs_decimal_magnitude = lhs.digits_->size() - 1;
   } else {
     std::copy(
         lhs.digits_->rbegin(),
         lhs.digits_->rbegin() + lhs_decimal_magnitude - rhs_decimal_magnitude,
         std::back_inserter(decimal_sum));
-    lhs_decimal_magnitude -= rhs_decimal_magnitude;
-    rhs_decimal_magnitude = 0;
+    lhs_decimal_magnitude = lhs.point_pos_ + rhs_decimal_magnitude - 1;
+    rhs_decimal_magnitude = rhs.digits_->size() - 1;
   }
 
   Word carry = 0;
-  auto lhs_iter = lhs.digits_->rbegin() + lhs_decimal_magnitude;
-  auto rhs_iter = rhs.digits_->rbegin() + rhs_decimal_magnitude;
-  for (; lhs_iter != lhs.digits_->rend() && rhs_iter != rhs.digits_->rend();
-       ++lhs_iter, ++rhs_iter) {
-    decimal_sum.push_back(
-        sum_one_digit_with_carry(*lhs_iter, *rhs_iter, carry));
+  for (; lhs_decimal_magnitude >= lhs.point_pos_ &&
+         rhs_decimal_magnitude >= rhs.point_pos_;
+       --lhs_decimal_magnitude, --rhs_decimal_magnitude) {
+    Byte sum =
+        sum_one_digit_with_carry(lhs.digits_->at(lhs_decimal_magnitude),
+                                 rhs.digits_->at(rhs_decimal_magnitude), carry);
+    if (decimal_sum.size() > 0 || sum != 0) {  // leading zeros will be omitted
+      decimal_sum.push_back(sum);
+      std::cout << "insert " << sum << " carry = " << carry << std::endl;
+    }
   }
 
   // now add corresponding digits in integer part
@@ -148,6 +155,7 @@ const Number operator+(const Number &lhs, const Number &rhs) {
   std::copy(decimal_sum.rbegin(), decimal_sum.rend(),
             std::back_inserter(*result.digits_));
 
+  debug_num(result);
   return result;
 }
 

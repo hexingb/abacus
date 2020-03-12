@@ -4,6 +4,29 @@
 #include <iostream>
 
 int main(int argc, char **argv) {
+  std::string number_a(argv[1]);
+  std::string number_b(argv[3]);
+  std::string op(argv[2]);
+  abacus::Number a(number_a);
+  abacus::Number b(number_b);
+
+  abacus::out_base(10);
+  if (op == "+") {
+    std::cout << a + b << std::endl;
+  } else if (op == "-") {
+    std::cout << a - b << std::endl;
+  } else if (op == "*") {
+    std::cout << a * b << std::endl;
+  } else if (op == "/") {
+    std::cout << a / b << std::endl;
+  } else if (op == "%") {
+    std::cout << a % b << std::endl;
+  }
+  return 0;
+}
+
+// I'll take these into a more formal unittest later.
+void test(int argc, char **argv) {
   std::cout << abacus::version() << std::endl;
   abacus::Number a(argv[1]);
   abacus::Number b(argv[2]);
@@ -25,5 +48,4 @@ int main(int argc, char **argv) {
   abacus::Number d = -37;
   bool primitive_equal = d == abs(d);
   std::cout << d << (primitive_equal ? " == " : " != ") << abs(d) << std::endl;
-  return 0;
 }
