@@ -65,8 +65,18 @@ bool operator>(const Number &lhs, const Number &rhs) { return !(lhs <= rhs); }
 bool operator>=(const Number &lhs, const Number &rhs) { return !(lhs < rhs); }
 bool operator!=(const Number &lhs, const Number &rhs) { return !(lhs == rhs); }
 
+Byte sum_one_digit_with_carry(Word a, Word b, Word &carry) {
+  Word sum = a + b + carry;
+  if (sum > ABACUS_BYTE_MAX) {
+    sum -= ABACUS_BYTE_MAX;
+    carry = 1;
+  } else {
+    carry = 0;
+  }
+  return static_cast<Byte>(sum);
+}
+
 const Number operator+(const Number &lhs, const Number &rhs) {
-  Number result;
   if (lhs.negative_ == true && rhs.negative_ == false) {
     return rhs - abs(lhs);
   }
@@ -74,6 +84,70 @@ const Number operator+(const Number &lhs, const Number &rhs) {
   if (lhs.negative_ == false && rhs.negative_ == true) {
     return lhs - abs(rhs);
   }
+
+  Number result;
+  if (lhs.negative_ == true && rhs.negative_ == true) {
+    result = abs(lhs) + abs(rhs);
+    result.negative_ = true;
+    return result;
+  }
+
+  // lhs and rhs are both positive now, add every corresponding digit
+
+  // add corresponding digits in decimal part, and save them in 'decimal_sum'
+  // and 'carry'
+  std::vector<Byte> decimal_sum;
+  size_t lhs_decimal_magnitude = lhs.digits_->size() - lhs.point_pos_;
+  size_t rhs_decimal_magnitude = rhs.digits_->size() - rhs.point_pos_;
+  if (lhs_decimal_magnitude < rhs_decimal_magnitude) {
+    std::copy(
+        rhs.digits_->rbegin(),
+        rhs.digits_->rbegin() + rhs_decimal_magnitude - lhs_decimal_magnitude,
+        std::back_inserter(decimal_sum));
+    rhs_decimal_magnitude -= lhs_decimal_magnitude;
+    lhs_decimal_magnitude = 0;
+  } else {
+    std::copy(
+        lhs.digits_->rbegin(),
+        lhs.digits_->rbegin() + lhs_decimal_magnitude - rhs_decimal_magnitude,
+        std::back_inserter(decimal_sum));
+    lhs_decimal_magnitude -= rhs_decimal_magnitude;
+    rhs_decimal_magnitude = 0;
+  }
+
+  Word carry = 0;
+  auto lhs_iter = lhs.digits_->rbegin() + lhs_decimal_magnitude;
+  auto rhs_iter = rhs.digits_->rbegin() + rhs_decimal_magnitude;
+  for (; lhs_iter != lhs.digits_->rend() && rhs_iter != rhs.digits_->rend();
+       ++lhs_iter, ++rhs_iter) {
+    decimal_sum.push_back(
+        sum_one_digit_with_carry(*lhs_iter, *rhs_iter, carry));
+  }
+
+  // now add corresponding digits in integer part
+  result.digits_->clear();
+  size_t pos = 0;
+  for (; pos < lhs.point_pos_ && pos < rhs.point_pos_; ++pos) {
+    result.digits_->push_back(sum_one_digit_with_carry(
+        lhs.digits_->at(pos), rhs.digits_->at(pos), carry));
+  }
+
+  for (; pos < lhs.point_pos_; ++pos) {
+    result.digits_->push_back(
+        sum_one_digit_with_carry(lhs.digits_->at(pos), 0, carry));
+  }
+
+  for (; pos < rhs.point_pos_; ++pos) {
+    result.digits_->push_back(
+        sum_one_digit_with_carry(rhs.digits_->at(pos), 0, carry));
+  }
+
+  result.point_pos_ = result.digits_->size();
+
+  // append decimal part 'decimal_sum' in little endian
+  std::copy(decimal_sum.rbegin(), decimal_sum.rend(),
+            std::back_inserter(*result.digits_));
+
   return result;
 }
 
