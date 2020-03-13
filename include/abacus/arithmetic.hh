@@ -65,10 +65,10 @@ bool operator>(const Number &lhs, const Number &rhs) { return !(lhs <= rhs); }
 bool operator>=(const Number &lhs, const Number &rhs) { return !(lhs < rhs); }
 bool operator!=(const Number &lhs, const Number &rhs) { return !(lhs == rhs); }
 
-Byte sum_one_digit_with_carry(Word a, Word b, Word &carry) {
+Byte sum_one_digit_with_carry(Word a, Word b, Word base, Word &carry) {
   Word sum = a + b + carry;
-  if (sum > ABACUS_BYTE_MAX) {
-    sum -= ABACUS_BYTE_MAX;
+  if (sum > base) {
+    sum -= base;
     carry = 1;
   } else {
     carry = 0;
@@ -122,12 +122,11 @@ const Number operator+(const Number &lhs, const Number &rhs) {
   for (; lhs_decimal_magnitude >= lhs.point_pos_ &&
          rhs_decimal_magnitude >= rhs.point_pos_;
        --lhs_decimal_magnitude, --rhs_decimal_magnitude) {
-    Byte sum =
-        sum_one_digit_with_carry(lhs.digits_->at(lhs_decimal_magnitude),
-                                 rhs.digits_->at(rhs_decimal_magnitude), carry);
+    Byte sum = sum_one_digit_with_carry(lhs.digits_->at(lhs_decimal_magnitude),
+                                        rhs.digits_->at(rhs_decimal_magnitude),
+                                        in_base(), carry);
     if (decimal_sum.size() > 0 || sum != 0) {  // leading zeros will be omitted
       decimal_sum.push_back(sum);
-      // std::cout << "insert " << sum << " carry = " << carry << std::endl;
     }
   }
 
@@ -136,22 +135,22 @@ const Number operator+(const Number &lhs, const Number &rhs) {
   size_t pos = 0;
   for (; pos < lhs.point_pos_ && pos < rhs.point_pos_; ++pos) {
     result.digits_->push_back(sum_one_digit_with_carry(
-        lhs.digits_->at(pos), rhs.digits_->at(pos), carry));
+        lhs.digits_->at(pos), rhs.digits_->at(pos), ABACUS_BYTE_MAX, carry));
   }
 
   for (; pos < lhs.point_pos_; ++pos) {
-    result.digits_->push_back(
-        sum_one_digit_with_carry(lhs.digits_->at(pos), 0, carry));
+    result.digits_->push_back(sum_one_digit_with_carry(lhs.digits_->at(pos), 0,
+                                                       ABACUS_BYTE_MAX, carry));
   }
 
   for (; pos < rhs.point_pos_; ++pos) {
-    result.digits_->push_back(
-        sum_one_digit_with_carry(rhs.digits_->at(pos), 0, carry));
+    result.digits_->push_back(sum_one_digit_with_carry(rhs.digits_->at(pos), 0,
+                                                       ABACUS_BYTE_MAX, carry));
   }
 
   result.point_pos_ = result.digits_->size();
 
-  // append decimal part 'decimal_sum' in little endian
+  // append decimal part 'decimal_sum'
   std::copy(decimal_sum.rbegin(), decimal_sum.rend(),
             std::back_inserter(*result.digits_));
 

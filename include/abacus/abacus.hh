@@ -91,8 +91,12 @@ bool num_read(const std::string &number, Word base, SignHandler signHandler,
   decimalPointHandler();
 
   const char *rch = number.c_str() + number.size() - 1;
-  for (; rch != ch; --rch) {
-    decimalHandler(*rch - '0');
+  while (rch > ch && *rch == '0') {  // skip trailing zeros
+    --rch;
+  }
+
+  for (++ch; ch <= rch; ++ch) {
+    decimalHandler(*ch - '0');
   }
   return true;
 }
@@ -119,43 +123,37 @@ class Number {
     Word remainder = 0;
     std::vector<Byte> quotient_series;
 
-    auto handler = [&](Word digit) {
+    auto integer_handler = [&](Word digit) {
       OnePassBaseConvert(digit, quotient, remainder, base, ABACUS_BYTE_MAX);
       if (quotient_series.size() > 0 || quotient != 0) {
         quotient_series.push_back(quotient);
       }
     };
 
-    auto trail_hook = [&]() {
-      digits_->push_back(remainder);
-
-      if (quotient_series.size() > 0) {
-        store_digits(quotient_series, base, ABACUS_BYTE_MAX);
-      }
+    auto integer_process_hook = [&]() {
       if (point_pos_ == 0) {
+        digits_->push_back(remainder);
+
+        if (quotient_series.size() > 0) {
+          store_digits(quotient_series, base, ABACUS_BYTE_MAX);
+        }
+
         point_pos_ = digits_->size();
       }
     };
 
+    // TODO save one digit into 4 bits, 1 byte, or 2 bytes or 4 bytes, according
+    // to the base of the digit
+    // FIXME at present base conversion is not considered
+    auto decimal_process_hook = [&](Word digit) { digits_->push_back(digit); };
+
     num_read(
         input, base, [&](char sign) { negative_ = sign == '-' ? true : false; },
-        handler,
-        [&]() {
-          trail_hook();
+        integer_handler, [&]() { integer_process_hook(); },
+        decimal_process_hook);
 
-          // clear the circumstance for decimal part
-          quotient = 0;
-          remainder = 0;
-          quotient_series.clear();
-        },
-        handler);
-
-    trail_hook();
-
-    // special case: remove the trailing .0
-    if (point_pos_ == digits_->size() - 1 && (*digits_)[point_pos_] == 0) {
-      digits_->pop_back();
-    }
+    // in case no decimal point '.' presented
+    integer_process_hook();
 
     // special case: for -0 set negative as false
     if (point_pos_ == 1 && digits_->size() == 1 && digits_->at(0) == 0) {
@@ -211,21 +209,20 @@ typedef Number num_t;
 
 // TODO thread local
 static Word g_out_base = 10;
+static Word g_in_base = 10;
 
 inline void out_base(Word base) { g_out_base = base; }
 
 inline Word out_base() { return g_out_base; }
 
+inline void in_base(Word base) { g_in_base = base; }
+
+inline Word in_base() { return g_in_base; }
+
 static void print_integer(bool negative, const std::vector<char> &digits,
                           std::ostream &os) {
   os << std::string(negative ? "-" : "");
   for (auto iter = digits.rbegin(); iter != digits.rend(); ++iter) {
-    os << *iter;
-  }
-}
-
-static void print_decimal(const std::vector<char> &digits, std::ostream &os) {
-  for (auto iter = digits.begin(); iter != digits.end(); ++iter) {
     os << *iter;
   }
 }
@@ -241,20 +238,23 @@ std::ostream &operator<<(std::ostream &os, const Number &num) {
     printable_integer.push_back((char)(digit + '0'));
   });
 
-  result.clear();
   std::copy(num.digits_->rbegin(),
             num.digits_->rbegin() + (num.digits_->size() - num.point_pos_),
             std::back_inserter(result));
 
-  std::vector<char> printable_decimal;
-  BaseConvert(result, ABACUS_BYTE_MAX, out_base(), [&](Word digit) {
-    printable_decimal.push_back((char)(digit + '0'));
-  });
-
   print_integer(num.negative_, printable_integer, os);
-  if (printable_decimal.size() > 0) {
+
+  size_t pos = num.point_pos_;
+  if (pos < num.digits_->size()) {
     os << ".";
-    print_decimal(printable_decimal, os);
+  }
+
+  if (in_base() == out_base()) {
+    for (; pos < num.digits_->size(); ++pos) {
+      os << static_cast<char>(num.digits_->at(pos) + '0');
+    }
+  } else {
+    // FIXME do base conversion with a scale
   }
 
   return os;
