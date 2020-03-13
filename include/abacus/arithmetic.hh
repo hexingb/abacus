@@ -127,7 +127,7 @@ const Number operator+(const Number &lhs, const Number &rhs) {
                                  rhs.digits_->at(rhs_decimal_magnitude), carry);
     if (decimal_sum.size() > 0 || sum != 0) {  // leading zeros will be omitted
       decimal_sum.push_back(sum);
-      std::cout << "insert " << sum << " carry = " << carry << std::endl;
+      // std::cout << "insert " << sum << " carry = " << carry << std::endl;
     }
   }
 

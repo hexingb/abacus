@@ -48,7 +48,9 @@ void BaseConvert(std::vector<Byte> &quotient_series, Word in_base,
       [&](Word &digit) {
         bool done = start == end;
 
-        digit = quotient_series[start++];
+        if (done == false) {
+          digit = quotient_series[start++];
+        }
         return done;
       },
       [&](Word quotient, Word &remainder) {
