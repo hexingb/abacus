@@ -117,9 +117,7 @@ static int DigitCountInByte(Word base) {
   return sizeof(Byte) / 4;
 }
 
-static bool StoreDigitIntoByte(Byte &byte, Word digit) {
-  return false;
-}
+static bool StoreDigitIntoByte(Byte &byte, Word digit) { return false; }
 
 class Number {
  public:
@@ -169,8 +167,7 @@ class Number {
 
     num_read(
         input, base, [&](char sign) { negative_ = sign == '-' ? true : false; },
-        integer_handler, [&]() { integer_process_hook(); },
-        decimal_process_hook);
+        integer_handler, integer_process_hook, decimal_process_hook);
 
     // in case no decimal point '.' presented
     integer_process_hook();
