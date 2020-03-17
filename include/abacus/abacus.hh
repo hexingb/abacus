@@ -101,6 +101,26 @@ bool num_read(const std::string &number, Word base, SignHandler signHandler,
   return true;
 }
 
+static int DigitCountInByte(Word base) {
+  if (base <= 16) {  // 4 bits for one digit
+    return sizeof(Byte) * 2;
+  }
+
+  if (base <= 256) {  // one byte for one digit
+    return sizeof(Byte);
+  }
+
+  if (base <= 65536) {  // two bytes for one digit
+    return sizeof(Byte) / 2;
+  }
+
+  return sizeof(Byte) / 4;
+}
+
+static bool StoreDigitIntoByte(Byte &byte, Word digit) {
+  return false;
+}
+
 class Number {
  public:
   // TODO use Number as a primitive type
