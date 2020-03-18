@@ -101,23 +101,62 @@ bool num_read(const std::string &number, Word base, SignHandler signHandler,
   return true;
 }
 
-static int DigitCountInByte(Word base) {
-  if (base <= 16) {  // 4 bits for one digit
-    return sizeof(Byte) * 2;
+static void DigitCountInByte(Word base, int &bits, int &count) {
+  if (sizeof(Byte) >= 4 && base <= (1ul << 32)) {
+    bits = 32;
+    count = 1;
   }
 
-  if (base <= 256) {  // one byte for one digit
-    return sizeof(Byte);
+  if (sizeof(Byte) >= 2 && base <= (1ul << 16)) {  // two bytes for one digit
+    bits = 16;
+    count = sizeof(Byte) / 2;
   }
 
-  if (base <= 65536) {  // two bytes for one digit
-    return sizeof(Byte) / 2;
+  if (sizeof(Byte) >= 1 && base <= (1ul << 8)) {  // one byte for one digit
+    bits = 8;
+    count = sizeof(Byte);
   }
 
-  return sizeof(Byte) / 4;
+  if (sizeof(Byte) >= 1 && base <= (1ul << 4)) {  // 4 bits for one digit
+    bits = 4;
+    count = sizeof(Byte) * 2;
+  }
 }
 
-static bool StoreDigitIntoByte(Byte &byte, Word digit) { return false; }
+static void StoreDigitIntoByte(Byte &byte, Word digit, int idx, int bits) {
+  byte |= (digit << (idx * bits));
+}
+
+// TODO thread local
+static Word g_out_base = 10;
+static Word g_in_base = 10;
+
+inline void out_base(Word base) { g_out_base = base; }
+
+inline Word out_base() { return g_out_base; }
+
+inline void in_base(Word base) { g_in_base = base; }
+
+inline Word in_base() { return g_in_base; }
+
+static int g_bits_for_one_digit = 0;
+static int g_digits_in_one_unit = 0;
+static size_t g_digits_mask = 0;
+
+class Initializer {
+ public:
+  Initializer(Word ibase = 10, Word obase = 10) {
+    in_base(ibase);
+    out_base(obase);
+    DigitCountInByte(in_base(), g_bits_for_one_digit, g_digits_in_one_unit);
+    for (int idx = 0; idx < g_bits_for_one_digit; ++idx) {
+      g_digits_mask |= (1 << idx);
+    }
+  }
+};
+
+// TODO specified by user
+static Initializer initializer;
 
 class Number {
  public:
@@ -135,14 +174,15 @@ class Number {
   Number(double) {}
   Number(float) {}
 
-  Number(const std::string &input, Word base = 10) {
+  Number(const std::string &input) {
     digits_ = std::make_shared<std::vector<Byte>>();
     Word quotient = 0;
     Word remainder = 0;
     std::vector<Byte> quotient_series;
 
     auto integer_handler = [&](Word digit) {
-      OnePassBaseConvert(digit, quotient, remainder, base, ABACUS_BYTE_MAX);
+      OnePassBaseConvert(digit, quotient, remainder, in_base(),
+                         ABACUS_BYTE_MAX);
       if (quotient_series.size() > 0 || quotient != 0) {
         quotient_series.push_back(quotient);
       }
@@ -153,21 +193,30 @@ class Number {
         digits_->push_back(remainder);
 
         if (quotient_series.size() > 0) {
-          store_digits(quotient_series, base, ABACUS_BYTE_MAX);
+          store_digits(quotient_series, in_base(), ABACUS_BYTE_MAX);
         }
 
         point_pos_ = digits_->size();
       }
     };
 
-    // TODO save one digit into 4 bits, 1 byte, or 2 bytes or 4 bytes, according
-    // to the base of the digit
-    // FIXME at present base conversion is not considered
-    auto decimal_process_hook = [&](Word digit) { digits_->push_back(digit); };
+    int idx = 0;
+    Byte byte = 0;
+    auto decimal_process_hook = [&](Word digit) {
+      if (idx == g_digits_in_one_unit) {
+        digits_->push_back(byte);
+        byte = 0;
+        idx = 0;
+      }
+      StoreDigitIntoByte(byte, digit, idx, g_bits_for_one_digit);
+      ++idx;
+    };
 
     num_read(
-        input, base, [&](char sign) { negative_ = sign == '-' ? true : false; },
+        input, in_base(),
+        [&](char sign) { negative_ = sign == '-' ? true : false; },
         integer_handler, integer_process_hook, decimal_process_hook);
+    digits_->push_back(byte);  // well I dislike it.
 
     // in case no decimal point '.' presented
     integer_process_hook();
@@ -224,24 +273,28 @@ class Number {
 
 typedef Number num_t;
 
-// TODO thread local
-static Word g_out_base = 10;
-static Word g_in_base = 10;
-
-inline void out_base(Word base) { g_out_base = base; }
-
-inline Word out_base() { return g_out_base; }
-
-inline void in_base(Word base) { g_in_base = base; }
-
-inline Word in_base() { return g_in_base; }
-
 static void print_integer(bool negative, const std::vector<char> &digits,
                           std::ostream &os) {
   os << std::string(negative ? "-" : "");
   for (auto iter = digits.rbegin(); iter != digits.rend(); ++iter) {
     os << *iter;
   }
+}
+
+static void print_decimal(std::ostream &os, Byte byte) {
+  for (int idx = 0; idx < g_digits_in_one_unit; ++idx) {
+    byte >>= (idx * g_bits_for_one_digit);
+    // if (byte != 0) {
+    // os << static_cast<char>((byte & g_digits_mask) + '0');
+    // }
+    std::cerr << " -- byte = " << byte
+              << " digit: " << static_cast<char>((byte & g_digits_mask) + '0')
+              << " idx = " << idx
+              << " byte&g_digits_mask = " << (byte & g_digits_mask)
+              << std::endl;
+  }
+  std::cerr << " done g_digits_in_one_unit = " << g_digits_in_one_unit
+            << " g_bits_for_one_digit = " << g_bits_for_one_digit << std::endl;
 }
 
 std::ostream &operator<<(std::ostream &os, const Number &num) {
@@ -255,10 +308,6 @@ std::ostream &operator<<(std::ostream &os, const Number &num) {
     printable_integer.push_back((char)(digit + '0'));
   });
 
-  std::copy(num.digits_->rbegin(),
-            num.digits_->rbegin() + (num.digits_->size() - num.point_pos_),
-            std::back_inserter(result));
-
   print_integer(num.negative_, printable_integer, os);
 
   size_t pos = num.point_pos_;
@@ -268,7 +317,7 @@ std::ostream &operator<<(std::ostream &os, const Number &num) {
 
   if (in_base() == out_base()) {
     for (; pos < num.digits_->size(); ++pos) {
-      os << static_cast<char>(num.digits_->at(pos) + '0');
+      print_decimal(os, num.digits_->at(pos));
     }
   } else {
     // FIXME do base conversion with a scale

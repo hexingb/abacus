@@ -65,14 +65,32 @@ bool operator>(const Number &lhs, const Number &rhs) { return !(lhs <= rhs); }
 bool operator>=(const Number &lhs, const Number &rhs) { return !(lhs < rhs); }
 bool operator!=(const Number &lhs, const Number &rhs) { return !(lhs == rhs); }
 
-Byte sum_one_digit_with_carry(Word a, Word b, Word base, Word &carry) {
+static Byte sum_one_digit_with_carry(Word a, Word b, Word base, Word &carry) {
   Word sum = a + b + carry;
-  if (sum > base) {
+  if (sum >= base) {
     sum -= base;
     carry = 1;
   } else {
     carry = 0;
   }
+  return static_cast<Byte>(sum);
+}
+
+static Byte sum_one_decimal_with_carry(Word a, Word b, Word base, Word &carry) {
+  Word sum = 0;
+  for (int idx = g_digits_in_one_unit; idx > 0; --idx) {
+    Word a_digit = (a >> ((idx - 1) * g_bits_for_one_digit)) & g_digits_mask;
+    Word b_digit = (b >> ((idx - 1) * g_bits_for_one_digit)) & g_digits_mask;
+    Word unit_sum = a_digit + b_digit + carry;
+    if (unit_sum >= base) {
+      unit_sum -= base;
+      carry = 1;
+    } else {
+      carry = 0;
+    }
+    sum |= (unit_sum << ((idx - 1) * g_bits_for_one_digit));
+  }
+
   return static_cast<Byte>(sum);
 }
 
@@ -122,9 +140,9 @@ const Number operator+(const Number &lhs, const Number &rhs) {
   for (; lhs_decimal_magnitude >= lhs.point_pos_ &&
          rhs_decimal_magnitude >= rhs.point_pos_;
        --lhs_decimal_magnitude, --rhs_decimal_magnitude) {
-    Byte sum = sum_one_digit_with_carry(lhs.digits_->at(lhs_decimal_magnitude),
-                                        rhs.digits_->at(rhs_decimal_magnitude),
-                                        in_base(), carry);
+    Byte sum = sum_one_decimal_with_carry(
+        lhs.digits_->at(lhs_decimal_magnitude),
+        rhs.digits_->at(rhs_decimal_magnitude), in_base(), carry);
     if (decimal_sum.size() > 0 || sum != 0) {  // leading zeros will be omitted
       decimal_sum.push_back(sum);
     }
