@@ -2,6 +2,7 @@
 #define ABACUS_ABACUS_HH
 
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
@@ -127,36 +128,11 @@ static void StoreDigitIntoByte(Byte &byte, Word digit, int idx, int bits) {
   byte |= (digit << (idx * bits));
 }
 
-// TODO thread local
-static Word g_out_base = 10;
-static Word g_in_base = 10;
-
-inline void out_base(Word base) { g_out_base = base; }
-
-inline Word out_base() { return g_out_base; }
-
-inline void in_base(Word base) { g_in_base = base; }
-
-inline Word in_base() { return g_in_base; }
-
 static int g_bits_for_one_digit = 0;
 static int g_digits_in_one_unit = 0;
 static size_t g_digits_mask = 0;
 
-class Initializer {
- public:
-  Initializer(Word ibase = 10, Word obase = 10) {
-    in_base(ibase);
-    out_base(obase);
-    DigitCountInByte(in_base(), g_bits_for_one_digit, g_digits_in_one_unit);
-    for (int idx = 0; idx < g_bits_for_one_digit; ++idx) {
-      g_digits_mask |= (1 << idx);
-    }
-  }
-};
-
-// TODO specified by user
-static Initializer initializer;
+class Environment;
 
 class Number {
  public:
@@ -228,18 +204,6 @@ class Number {
   }
 
   friend std::ostream &operator<<(std::ostream &os, const Number &n);
-  friend const Number abs(const Number &lhs);
-  friend const Number operator+(const Number &lhs, const Number &rhs);
-  friend const Number operator-(const Number &lhs, const Number &rhs);
-  friend const Number operator*(const Number &lhs, const Number &rhs);
-  friend const Number operator/(const Number &lhs, const Number &rhs);
-  friend const Number operator%(const Number &lhs, const Number &rhs);
-  friend bool operator<(const Number &lhs, const Number &rhs);
-  friend bool operator<=(const Number &lhs, const Number &rhs);
-  friend bool operator>(const Number &lhs, const Number &rhs);
-  friend bool operator>=(const Number &lhs, const Number &rhs);
-  friend bool operator==(const Number &lhs, const Number &rhs);
-  friend bool operator!=(const Number &lhs, const Number &rhs);
 
  private:
   void store_digits(std::vector<Byte> &quotient_series, Word in_base,
@@ -269,7 +233,7 @@ class Number {
 #else
 #define debug_num(num)
 #endif
-};  // namespace abacus
+};
 
 typedef Number num_t;
 
@@ -325,6 +289,31 @@ std::ostream &operator<<(std::ostream &os, const Number &num) {
 
   return os;
 }
+
+class Environment {
+ public:
+  Environment() {}
+
+  Byte in_base() const { return in_base_; }
+  Byte out_base() const { return out_base_; }
+
+  const Number abs(const Number &lhs);
+  const Number add(const Number &lhs, const Number &rhs);
+  const Number sub(const Number &lhs, const Number &rhs);
+  const Number mul(const Number &lhs, const Number &rhs);
+  const Number div(const Number &lhs, const Number &rhs);
+  const Number mod(const Number &lhs, const Number &rhs);
+  bool less_than(const Number &lhs, const Number &rhs);
+  bool less_equal(const Number &lhs, const Number &rhs);
+  bool greater(const Number &lhs, const Number &rhs);
+  bool greater_equal(const Number &lhs, const Number &rhs);
+  bool equal(const Number &lhs, const Number &rhs);
+  bool not_equal(const Number &lhs, const Number &rhs);
+
+ private:
+  Byte in_base_ = 10;
+  Byte out_base_ = 10;
+};
 
 }  // namespace abacus
 
