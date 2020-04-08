@@ -5,6 +5,26 @@
 
 namespace abacus {
 
+const Number operator+(const Number &lhs, const Number &rhs) {
+  return Number();
+}
+
+const Number operator-(const Number &lhs, const Number &rhs) {
+  return Number();
+}
+
+const Number operator*(const Number &lhs, const Number &rhs) {
+  return Number();
+}
+
+const Number operator/(const Number &lhs, const Number &rhs) {
+  return Number();
+}
+
+const Number operator%(const Number &lhs, const Number &rhs) {
+  return Number();
+}
+
 const Number abs(const Number &lhs) {
   Number result;
   result.negative_ = false;

@@ -14,7 +14,6 @@ const std::string version() {
   std::ostringstream oss;
   oss << ABACUS_VERSION_MAJOR << "." << ABACUS_VERSION_MINOR << "."
       << ABACUS_VERSION_PATCH << std::endl;
-  oss << "internal base: " << ABACUS_BYTE_MAX;
   return oss.str();
 }
 
